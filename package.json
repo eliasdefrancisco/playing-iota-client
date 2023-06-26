@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "IOTA client using iota.rs",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
@@ -10,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@iota/client": "^3.0.0-rc.9"
+    "@iota/client": "^3.0.0-rc.9",
+    "dotenv": "^16.3.1",
+    "inquirer": "^9.2.7"
   }
 }
