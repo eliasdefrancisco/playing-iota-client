@@ -1,54 +1,26 @@
-// Copyright 2021-2022 IOTA Stiftung
-// SPDX-License-Identifier: Apache-2.0
-
-import { Client, initLogger } from '@iota/client';
-import { writeFile, readFile } from 'fs/promises';
-
-
-
-// From examples directory, run with:
-// node ./dist/offline_signing/2_transaction_signing.js
-
-const PREPARED_TRANSACTION_FILE_NAME =
-    __dirname + '/../../offline_signing/prepared_transaction.json';
-const SIGNED_TRANSACTION_FILE_NAME =
-    __dirname + '/../../offline_signing/signed_transaction.json';
-
 // In this example we will sign the prepared transaction
 export async function run() {
-    initLogger();
+    const { ClientBuilder } = require('../../');
+    const fs = require('fs')
 
-    const offlineClient = new Client({});
+    const iota_offline = new ClientBuilder()
+        .offlineMode()
+        .build();
 
-    try {
-        if (!process.env.NON_SECURE_USE_OF_DEVELOPMENT_MNEMONIC_1) {
-            throw new Error('.env mnemonic is undefined, see .env.example');
+    const PREPARED_TRANSACTION_FILE_NAME = "examples/offline_signing/prepared_transaction.json";
+    const SIGNED_TRANSACTION_FILE_NAME = "examples/offline_signing/signed_transaction.json";
+    const seed = process.env.IOTA_SEED_SECRET;
+
+    const prepared_transaction_data = JSON.parse(fs.readFileSync(PREPARED_TRANSACTION_FILE_NAME, 'utf8'))
+
+    let signed_transaction = await iota_offline
+        .message().signTransaction(prepared_transaction_data, seed);
+
+    console.log('Signed transaction')
+
+    fs.writeFile(SIGNED_TRANSACTION_FILE_NAME, JSON.stringify(signed_transaction), err => {
+        if (err) {
+            console.error(err)
         }
-
-        const secretManager = {
-            mnemonic: process.env.NON_SECURE_USE_OF_DEVELOPMENT_MNEMONIC_1,
-        };
-
-        // Read in prepared transaction from example 2_transaction_preparation
-        const preparedTransaction = JSON.parse(
-            await readFile(PREPARED_TRANSACTION_FILE_NAME, 'utf8'),
-        );
-
-        // Signs prepared transaction offline.
-        const signedTransaction = await offlineClient.signTransaction(
-            secretManager,
-            preparedTransaction,
-        );
-
-        console.log('Signed transaction.');
-
-        await writeFile(
-            SIGNED_TRANSACTION_FILE_NAME,
-            JSON.stringify(signedTransaction),
-        );
-    } catch (error) {
-        console.error(error);
-    }
+    })
 }
-
-

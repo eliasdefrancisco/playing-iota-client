@@ -1,41 +1,21 @@
-// Copyright 2021-2022 IOTA Stiftung
-// SPDX-License-Identifier: Apache-2.0
+import { ClientBuilder } from '@iota/client';
 
-import { Client, initLogger } from '@iota/client';
-
-
-// Run with command:
-// node ./dist/10_mqtt.js
-
-// Initialize MQTT listener
 export async function run() {
-    initLogger();
-    if (!process.env.NODE_URL) {
-        throw new Error('.env NODE_URL is undefined, see .env.example');
-    }
 
-    // Connecting to a MQTT broker using raw ip doesn't work with TCP. This is a limitation of rustls.
-    const client = new Client({
-        nodes: [process.env.NODE_URL],
-    });
+    // client connects to a node that has MQTT enabled
+    const client = new ClientBuilder()
+        .node('https://api.thin-hornet-1.h.chrysalis-devnet.iota.cafe')
+        .build();
 
-    // Array of topics to subscribe to
-    // Topics can be found here https://studio.asyncapi.com/?url=https://raw.githubusercontent.com/iotaledger/tips/stardust-event-api/tips/TIP-0028/event-api.yml
-    const topics = ['blocks'];
+    client.subscriber().topics(['milestones/confirmed', 'messages']).subscribe((err, data) => {
+        console.log(data);
+        // To get the message id from messages `client.getMessageId(data.payload)` can be used
+    })
 
-    const callback = function (error, data) {
-        console.log(JSON.parse(data));
-    };
-
-    await client.listen(topics, callback);
-
-    // Clear listener after 10 seconds
-    setTimeout(async () => {
-        await client.clearListeners(['blocks']);
-        console.log('Listener cleared');
-        // Exit the process
-        setTimeout(async () => process.exit(0), 2000);
-    }, 10000);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    // unsubscribe from 'messages' topic, will continue to receive events for 'milestones/confirmed'
+    client.subscriber().topics(['messages']).unsubscribe((err, data) => {
+        console.log(data);
+    })
 }
 
-run();

@@ -1,55 +1,27 @@
-// Copyright 2021-2022 IOTA Stiftung
-// SPDX-License-Identifier: Apache-2.0
-
-import {
-    Client,
-    CoinType,
-    initLogger,
-    SHIMMER_TESTNET_BECH32_HRP,
-} from '@iota/client';
-import { writeFile } from 'fs/promises';
-
-
-
-// From examples directory, run with:
-// node ./dist/offline_signing/0_address_generation.js
-
-const ADDRESS_FILE_NAME = __dirname + '/../../offline_signing/address.json';
-
-// In this example we will generate an address offline which will be used later to find inputs
+// In this example we will generate addresses which will be used later to find inputs
 export async function run() {
-    initLogger();
-    const offlineClient = new Client({});
+    const { ClientBuilder } = require('../../');
+    const fs = require('fs')
 
-    try {
-        if (!process.env.NON_SECURE_USE_OF_DEVELOPMENT_MNEMONIC_1) {
-            throw new Error('.env mnemonic is undefined, see .env.example');
+    const iota_offline = new ClientBuilder()
+        .offlineMode()
+        .build();
+
+    const ADDRESS_FILE_NAME = "examples/offline_signing/addresses.json";
+    const seed = process.env.IOTA_SEED_SECRET;
+
+    let addresses = await iota_offline
+        .getAddresses(seed)
+        .range(0, 10)
+        .bech32Hrp("atoi")
+        .get();
+
+    console.log(addresses)
+
+    fs.writeFile(ADDRESS_FILE_NAME, JSON.stringify(addresses), err => {
+        if (err) {
+            console.error(err)
         }
-
-        const secretManager = {
-            mnemonic: process.env.NON_SECURE_USE_OF_DEVELOPMENT_MNEMONIC_1,
-        };
-
-        // Generates an address offline.
-        const offlineGeneratedAddress = await offlineClient.generateAddresses(
-            secretManager,
-            {
-                coinType: CoinType.Shimmer,
-                range: {
-                    start: 0,
-                    end: 10,
-                },
-                bech32Hrp: SHIMMER_TESTNET_BECH32_HRP,
-            },
-        );
-
-        await writeFile(
-            ADDRESS_FILE_NAME,
-            JSON.stringify(offlineGeneratedAddress),
-        );
-    } catch (error) {
-        console.error('Error: ', error);
-    }
+    })
 }
-
 

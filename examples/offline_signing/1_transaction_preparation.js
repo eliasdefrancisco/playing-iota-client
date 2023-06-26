@@ -1,60 +1,32 @@
-// Copyright 2021-2022 IOTA Stiftung
-// SPDX-License-Identifier: Apache-2.0
-
-import { Client, initLogger } from '@iota/client';
-import { writeFile, readFile } from 'fs/promises';
-
-
-
-// From examples directory, run with:
-// node ./dist/offline_signing/1_transaction_preparation.js
-
-const ADDRESS_FILE_NAME = __dirname + '/../../offline_signing/address.json';
-const PREPARED_TRANSACTION_FILE_NAME =
-    __dirname + '/../../offline_signing/prepared_transaction.json';
-
 // In this example we will get inputs and prepare a transaction
 export async function run() {
-    initLogger();
-    if (!process.env.NODE_URL) {
-        throw new Error('.env NODE_URL is undefined, see .env.example');
+    const { ClientBuilder } = require('../../');
+    const fs = require('fs')
+
+    const iota_online = new ClientBuilder()
+        .node("https://api.lb-0.testnet.chrysalis2.com")
+        .build();
+
+    let address = "atoi1qruzprxum2934lr3p77t96pzlecxv8pjzvtjrzdcgh2f5exa22n6gek0qdq";
+    let amount = 1_000_000;
+    const ADDRESS_FILE_NAME = "examples/offline_signing/addresses.json";
+    const PREPARED_TRANSACTION_FILE_NAME = "examples/offline_signing/prepared_transaction.json";
+
+    const addresses = JSON.parse(fs.readFileSync(ADDRESS_FILE_NAME, 'utf8'))
+
+    let inputs = await iota_online
+        .findInputs(addresses, amount);
+
+    let transaction_builder = iota_online.message();
+    for (input of inputs) {
+        transaction_builder = transaction_builder.input(input);
     }
-    const onlineClient = new Client({
-        // Insert your node URL in the .env.
-        nodes: [process.env.NODE_URL],
-        localPow: true,
-    });
+    let prepared_transaction_data = await transaction_builder.output(address, amount).prepareTransaction();
+    console.log(`Prepared transaction sending ${amount} to ${address}`)
 
-    const address =
-        'rms1qqv5avetndkxzgr3jtrswdtz5ze6mag20s0jdqvzk4fwezve8q9vkpnqlqe';
-    const amount = 1000000;
-    try {
-        // Recovers the address from example `0_address_generation`.
-        const input_address = JSON.parse(
-            await readFile(ADDRESS_FILE_NAME, 'utf8'),
-        );
-
-        // Gets enough inputs related to the address to cover the amount.
-        const inputs = await onlineClient.findInputs(input_address, amount);
-
-        // Prepares the transaction
-        const preparedTransaction = await onlineClient.prepareTransaction(
-            undefined,
-            {
-                inputs,
-                output: { address, amount: amount.toString() },
-            },
-        );
-
-        console.log(`Prepared transaction sending ${amount} to ${address}.`);
-
-        await writeFile(
-            PREPARED_TRANSACTION_FILE_NAME,
-            JSON.stringify(preparedTransaction),
-        );
-    } catch (error) {
-        console.error(error);
-    }
+    fs.writeFile(PREPARED_TRANSACTION_FILE_NAME, JSON.stringify(prepared_transaction_data), err => {
+        if (err) {
+            console.error(err)
+        }
+    })
 }
-
-
